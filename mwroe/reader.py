@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 import random
 
+
 def constructPrior(prior_filename, config_dict):
     """
         constructPrior
@@ -33,33 +34,34 @@ def constructPrior(prior_filename, config_dict):
     # x_a is a vector of size n x 1, Sa is a matrix of size n x n.
     # Load in the prior (Xa, Sa):
     prior = Dataset(prior_filename)
-    alta = prior.variables['height'][:]*1000.
+    alta = prior.variables['height'][:] * 1000.
     Xa = prior.variables['mean_prior'][:]
     Xa = np.concatenate((Xa, [config_dict['mean_prior_LWP']]))
 
     # Make the Se matrix
     Sa_pre = prior.variables['covariance_prior'][:]
-    Sa = np.zeros((len(Xa),len(Xa)))
-    Sa[:len(Xa)-1,:len(Xa)-1] = Sa_pre
-    Sa[-1,-1] = config_dict['std_prior_LWP']**2
+    Sa = np.zeros((len(Xa), len(Xa)))
+    Sa[:len(Xa) - 1, :len(Xa) - 1] = Sa_pre
+    Sa[-1, -1] = config_dict['std_prior_LWP'] ** 2
     Sa = np.matrix(Sa)
 
     # Load additional info from the prior file.
-    prior_comment = str(getattr(prior,'Comment', "No comment specified"))
-    num_profsc = str(getattr(prior,'Nsonde', "Number of profiles used to generate the prior was not specified"))
-    prior_numprofs = [s for s in num_profsc.split() if s.isdigit()][0]
+    prior_comment = str(getattr(prior, 'Comment', "No comment specified"))
+    num_profsc = str(getattr(prior, 'Nsonde', "Number of profiles used to generate the prior was not specified"))
+    prior_numprofs = [s for s in num_profsc.split() if s.isdigit()]
     if len(prior_numprofs) == 0:
         prior_numprofs = -9999.
-    
+
     prior_info = {}
     prior_info['prior_filename'] = prior_filename
     prior_info['prior_comment'] = prior_comment
     prior_info['prior_numprofs'] = prior_numprofs
-                
+
     # Close the prior file.
     prior.close()
 
     return Xa, Sa, alta, prior_info
+
 
 def findVIPVariable(variable, vip_string):
     """
@@ -79,24 +81,25 @@ def findVIPVariable(variable, vip_string):
         either a string for a float of the value assigned to the variable
 
         Returns None if the variable name is not found.
-    """    
-    #This function searches for the value associatied with the key
-    #(key is variable) within the VIP file and returns it either as a
-    #float or a string
+    """
+    # This function searches for the value associatied with the key
+    # (key is variable) within the VIP file and returns it either as a
+    # float or a string
 
-    ini=vip_string.find(variable)+(len(variable)+1)
-    rest=vip_string[ini:]
-    search_enter=rest.find('\n')
+    ini = vip_string.find(variable) + (len(variable) + 1)
+    rest = vip_string[ini:]
+    search_enter = rest.find('\n')
     data = (rest[:search_enter])
     if len(data) == 0:
-        #print "VIP variable: " + variable + " not found in VIP file."
+        # print "VIP variable: " + variable + " not found in VIP file."
         return None
     datas = data.split(";")
     string = datas[0].replace('=', '')
-    try: 
+    try:
         return float(string)
     except:
         return string
+
 
 def readVIP(vip_fn):
     """
@@ -117,23 +120,23 @@ def readVIP(vip_fn):
         -------
         config_dict : a dictionary/structure of VIP file, MWRoe code, and machine information
     """
-    
+
     # Read the VIP file.
-    vip_file = open(vip_fn,'r')
+    vip_file = open(vip_fn, 'r')
     vip_string = vip_file.read()
     vip_file.close()
-    
+
     vip_string = vip_string.split('\n')
     vip_string[:] = [i for i in vip_string if i != '']
-    vip_string[:] = [i for i in vip_string if not i.startswith('#')] # should now have length == 55
+    vip_string[:] = [i for i in vip_string if not i.startswith('#')]  # should now have length == 55
     vip_string = '\n'.join(vip_string)
 
-    config_dict = {}    
-   
+    config_dict = {}
+
     # Get the spectral averaging interval in minutes from the VIP file.
     var = findVIPVariable('tres', vip_string)
     config_dict['tres'] = int(var)
- 
+
     ############################################################################
     #
     #   VIP information about zenith obs to be used in the retrieval
@@ -162,12 +165,14 @@ def readVIP(vip_fn):
         # If there's an error, stop the program and tell the user.
         print "Error reading the zenith frequency uncertanities."
         sys.exit()
-    
+
     # Check to see if there are an equal number of elements between the zenith frequencies and the zenith uncertaintites in the VIP file.
     var = np.asarray(var.split(','), dtype=float)
     if len(config_dict['zenith_freqs']) != len(var):
         # This means that the user hasn't specified the right number of zenith uncertanities
-        print "Number of zenith channel uncertanities listed in VIP file (" + str(len(var)) + ") does not match the number of specified zenith channel frequencies (" + str(len(config_dict['zenith_freqs'])) + "). Aborting."
+        print "Number of zenith channel uncertanities listed in VIP file (" + str(
+            len(var)) + ") does not match the number of specified zenith channel frequencies (" + str(
+            len(config_dict['zenith_freqs'])) + "). Aborting."
         sys.exit()
     else:
         config_dict['zenith_uncert'] = var
@@ -177,7 +182,7 @@ def readVIP(vip_fn):
     #   VIP information about Off-zenith obs to be used in the retrieval
     #
     ############################################################################
-    
+
     # 1.) Load in the off-zenith frequencies and the elevation angles used for the retrieval
     try:
         var = findVIPVariable('off_zenith_freq', vip_string)
@@ -185,7 +190,7 @@ def readVIP(vip_fn):
     except:
         print "Error reading the off-zenith frequenices from VIP file."
         sys.exit()
-    
+
     # 2.) Check to see if the VIP fields actually means don't use the off-zenith frequencies in the retrieval.
     if var == 0 or var2 == 0:
         config_dict['off_zenith_freqs'] = []
@@ -206,7 +211,7 @@ def readVIP(vip_fn):
             # If there's an error, stop the program and tell the user.
             print "Error reading the off-zenith frequency uncertanities."
             sys.exit()
-      
+
         # Gather the off-zenith channel uncertanities since they exist and put them into an array
         var = np.asarray(var.split(','), dtype=float)
         if len(config_dict['off_zenith_freqs']) != len(var):
@@ -218,7 +223,6 @@ def readVIP(vip_fn):
     else:
         config_dict['off_zenith_uncert'] = []
 
-   
     ############################################################################
     #
     #   VIP information about frequency offsets to account for lack of band-pass
@@ -226,12 +230,12 @@ def readVIP(vip_fn):
     ############################################################################
 
     # 1.) Check for frequency offsets (ONLY FOR ZENITH OBS) listed in the VIP file.
-    try: 
+    try:
         var = findVIPVariable('freq_offset', vip_string)
     except:
         print "Error reading frequency offsets from VIP file."
         sys.exit()
- 
+
     # 2.) Load them in if they exist.
     if var == 0:
         # Means that the user does not want any frequency offsets
@@ -245,13 +249,12 @@ def readVIP(vip_fn):
         config_dict['freq_offsets'] = np.asarray(var.split(','), dtype=float)
         print "Using offsets for the zenith frequencies."
 
-
     ############################################################################
     #
     #   VIP information about frequency offsets to account for Tb Biases
     #
     ############################################################################
-   
+
     # 1.) Check for brightness temperature offsets (ONLY FOR ZENITH OBS) listed in the VIP file.
     try:
         var = findVIPVariable('tb_offset', vip_string)
@@ -284,21 +287,22 @@ def readVIP(vip_fn):
         config_dict['offset_file'] = ''
 
     # Compute the total expected length of each Y vector.
-    config_dict['num_Y_elems'] = len(config_dict['zenith_freqs']) + (len(config_dict['off_zenith_freqs']) * len(config_dict['off_zenith_elevs']))
+    config_dict['num_Y_elems'] = len(config_dict['zenith_freqs']) + (
+    len(config_dict['off_zenith_freqs']) * len(config_dict['off_zenith_elevs']))
 
     ############################################################################
     #
     #   VIP information about the Jacobian calculations
     #
     ############################################################################   
-    
-    #Retrieved variable (T,Q,LWP) perturbation settings for finite differencing Jacobian
+
+    # Retrieved variable (T,Q,LWP) perturbation settings for finite differencing Jacobian
     config_dict['jac_Tpert'] = 1.0
     config_dict['jac_Qpert'] = .99
     config_dict['jac_LWPpert'] = 10.0
-    
-    #Jacobian settings
-    config_dict['jac_type_flag'] = int(findVIPVariable("jac_option", vip_string)) # Not working yet.
+
+    # Jacobian settings
+    config_dict['jac_type_flag'] = int(findVIPVariable("jac_option", vip_string))  # Not working yet.
     config_dict['jac_max_alt'] = float(findVIPVariable('jac_max_ht', vip_string))
 
     ############################################################################
@@ -309,11 +313,11 @@ def readVIP(vip_fn):
 
     # Load in the prior data mean and standard deviation from the VIP file
     try:
-        config_dict['mean_prior_LWP'] = float(findVIPVariable('prior_lwp_mn', vip_string)) #float(vip_string[30])
+        config_dict['mean_prior_LWP'] = float(findVIPVariable('prior_lwp_mn', vip_string))  # float(vip_string[30])
     except:
         config_dict['mean_prior_LWP'] = 0
-    try:    
-        config_dict['std_prior_LWP'] = float(findVIPVariable('prior_lwp_sd', vip_string)) #float(vip_string[31])
+    try:
+        config_dict['std_prior_LWP'] = float(findVIPVariable('prior_lwp_sd', vip_string))  # float(vip_string[31])
     except:
         config_dict['std_prior_LWP'] = 10.0
 
@@ -331,7 +335,8 @@ def readVIP(vip_fn):
     config_dict['mwr_lat'] = findVIPVariable('mwr_lat', vip_string)
     config_dict['mwr_lon'] = findVIPVariable('mwr_lon', vip_string)
     config_dict['mwr_alt'] = findVIPVariable('mwr_alt', vip_string)
-    config_dict['mwr_calib_pres'] = np.asarray(findVIPVariable('mwr_calib_pres',vip_string).strip().split(','), dtype=float)
+    config_dict['mwr_calib_pres'] = np.asarray(findVIPVariable('mwr_calib_pres', vip_string).strip().split(','),
+                                               dtype=float)
     config_dict['mwr_site'] = findVIPVariable('globatt_Site', vip_string).strip()
     config_dict['mwr_inst'] = findVIPVariable('globatt_Instrument', vip_string).strip()
 
@@ -348,21 +353,19 @@ def readVIP(vip_fn):
     config_dict['cbh_window_out'] = int(findVIPVariable('cbh_window_out', vip_string))
     config_dict['cbh_default_ht'] = float(findVIPVariable('cbh_default_ht', vip_string))
 
- 
-    
     ############################################################################
     #
     #   VIP information about the MonoRTM executable and files
     #
     ############################################################################   
 
-    #MonoRTM settings
+    # MonoRTM settings
     config_dict['monortm_freqs_fname_base'] = 'mwr_retr_monortm_freqs'
     config_dict['monortm_configs_fname'] = 'mwr_retr_monortm_config'
-    config_dict['num_monortm_calc_header_lines'] = 11 #int(vip_string[37])
+    config_dict['num_monortm_calc_header_lines'] = 11  # int(vip_string[37])
     config_dict['monortm_exec_path'] = findVIPVariable('monortm_exec', vip_string).strip()
-    
-    #Working directory for MonoRTM
+
+    # Working directory for MonoRTM
     random_no = str(random.randint(0, 100000))
     config_dict['working_dir'] = findVIPVariable('working_dir', vip_string).strip() + '-' + random_no
     os.system('mkdir ' + config_dict['working_dir'])
@@ -376,10 +379,10 @@ def readVIP(vip_fn):
     #
     ############################################################################  
 
-    #Paths to MWR data 
+    # Paths to MWR data
     config_dict['mwr_dir'] = findVIPVariable('mwr_path', vip_string).strip()
-    
-    #Path to retrieved data
+
+    # Path to retrieved data
     config_dict['output_path'] = findVIPVariable('output_path', vip_string).strip()
     config_dict['output_clobber'] = int(findVIPVariable('output_clobber', vip_string))
     config_dict['output_rootname'] = findVIPVariable('output_rootname', vip_string).strip()
@@ -390,7 +393,7 @@ def readVIP(vip_fn):
     #
     ############################################################################ 
 
-    #Algorithm information
+    # Algorithm information
     config_dict['alg_authors'] = 'Greg Blumberg, Stephen Castleberry, Dave Turner'
     config_dict['alg_contacts'] = 'wblumberg@ou.edu'
     config_dict['alg_name'] = 'MWRoe Version 2'
@@ -407,9 +410,9 @@ def readVIP(vip_fn):
 
     config_dict['max_iterations'] = int(findVIPVariable('max_iterations', vip_string))
 
-
-    # Return the dictionary (or structure) containing all of the configuration information needed to run the retrieval.        
+    # Return the dictionary (or structure) containing all of the configuration information needed to run the retrieval.
     return config_dict
+
 
 def read_offset_data(config, dt_obj, oe_inputs, method='interp', extrapolate=True):
     '''
@@ -438,22 +441,22 @@ def read_offset_data(config, dt_obj, oe_inputs, method='interp', extrapolate=Tru
         freq_offsets : an array of the frequency offsets [GHz] to be applied to the frequency values
     '''
     data = Dataset(config['offset_file'])
-    times = data.variables['base_time'][:] # Should be in epoch since 1970-01-01 00:00:00+00:00
+    times = data.variables['base_time'][:]  # Should be in epoch since 1970-01-01 00:00:00+00:00
     bias_freqs = data.variables['frequencies'][:]
 
     ob_time = date2num(dt_obj, 'seconds since 1970-01-01 00:00:00+00:00')
-    
+
     z_freqs = oe_inputs['z_freqs']
     z_tb_offsets = np.empty(len(z_freqs))
     z_freq_offsets = np.empty(len(z_freqs))
     z_tb_sigma = np.empty(len(z_freqs))
-    z_freq_sigma = np.empty(len(z_freqs)) 
-    for i in xrange(len(z_freqs)): # Get all offsets for the zenith frequencies
+    z_freq_sigma = np.empty(len(z_freqs))
+    for i in xrange(len(z_freqs)):  # Get all offsets for the zenith frequencies
         idx = np.argmin(np.abs(bias_freqs - z_freqs[i]))
         offset_f = data.variables['delta_f'][idx]
-        offset_tb = np.ma.masked_values(data.variables['delta_tb'][:,idx],-9999)
+        offset_tb = np.ma.masked_values(data.variables['delta_tb'][:, idx], -9999)
         uncert_f = data.variables['f_sigma'][idx]
-        uncert_tb = np.ma.masked_values(data.variables['tb_sigma'][:,idx],-9999)
+        uncert_tb = np.ma.masked_values(data.variables['tb_sigma'][:, idx], -9999)
         mask = uncert_tb.mask
         try:
             dummy = len(mask)
@@ -464,7 +467,7 @@ def read_offset_data(config, dt_obj, oe_inputs, method='interp', extrapolate=Tru
             tb_o = np.interp(ob_time, times[~mask], offset_tb[~mask])
         elif method == 'nearest':
             time_nearest_idx = np.argmin(np.abs(ob_time - times[~mask]))
-            
+
             tb_u = uncert_tb[~mask][time_nearest_idx]
             tb_o = offset_tb[~mask][time_nearest_idx]
         else:
@@ -476,22 +479,22 @@ def read_offset_data(config, dt_obj, oe_inputs, method='interp', extrapolate=Tru
         z_freq_sigma[i] = uncert_f
 
     offsets = {}
-    #offsets['z_tb_offsets'] = z_tb_offsets
+    # offsets['z_tb_offsets'] = z_tb_offsets
     offsets['z_freq_offsets'] = z_freq_offsets
-    #offsets['z_tb_sigma'] = z_tb_sigma
+    # offsets['z_tb_sigma'] = z_tb_sigma
     offsets['z_freq_sigma'] = z_freq_sigma
 
     oz_freqs = oe_inputs['oz_freqs']
     oz_tb_offsets = np.empty(len(oz_freqs))
     oz_freq_offsets = np.empty(len(oz_freqs))
     oz_tb_sigma = np.empty(len(oz_freqs))
-    oz_freq_sigma = np.empty(len(oz_freqs)) 
-    for i in xrange(len(oz_freqs)): # Get all offsets for the zenith frequencies
+    oz_freq_sigma = np.empty(len(oz_freqs))
+    for i in xrange(len(oz_freqs)):  # Get all offsets for the zenith frequencies
         idx = np.argmin(np.abs(bias_freqs - oz_freqs[i]))
         offset_f = data.variables['delta_f'][idx]
-        offset_tb = np.ma.masked_values(data.variables['delta_tb'][:,idx],-9999)
+        offset_tb = np.ma.masked_values(data.variables['delta_tb'][:, idx], -9999)
         uncert_f = data.variables['f_sigma'][idx]
-        uncert_tb = np.ma.masked_values(data.variables['tb_sigma'][:,idx],-9999)
+        uncert_tb = np.ma.masked_values(data.variables['tb_sigma'][:, idx], -9999)
         mask = uncert_tb.mask
         try:
             dummy = len(mask)
@@ -504,13 +507,16 @@ def read_offset_data(config, dt_obj, oe_inputs, method='interp', extrapolate=Tru
         oz_tb_sigma[i] = tb_u
         oz_freq_sigma[i] = uncert_f
 
-    offsets['all_tb_offsets'] = np.concatenate((z_tb_offsets, np.tile(oz_tb_offsets, len(oe_inputs['elevations_unique'])-1)))    
-    offsets['all_tb_sigmas'] = np.concatenate((z_tb_sigma, np.tile(oz_tb_sigma, len(oe_inputs['elevations_unique'])-1)))    
+    offsets['all_tb_offsets'] = np.concatenate(
+        (z_tb_offsets, np.tile(oz_tb_offsets, len(oe_inputs['elevations_unique']) - 1)))
+    offsets['all_tb_sigmas'] = np.concatenate(
+        (z_tb_sigma, np.tile(oz_tb_sigma, len(oe_inputs['elevations_unique']) - 1)))
     offsets['oz_freq_offsets'] = oz_freq_offsets
     offsets['oz_freq_sigma'] = oz_freq_sigma
-    offsets['all_freq_sigmas'] = np.concatenate((z_freq_sigma, np.tile(oz_freq_sigma, len(oe_inputs['elevations_unique'])-1)))
+    offsets['all_freq_sigmas'] = np.concatenate(
+        (z_freq_sigma, np.tile(oz_freq_sigma, len(oe_inputs['elevations_unique']) - 1)))
     offsets['B'] = np.matrix(np.diag(np.concatenate((offsets['all_freq_sigmas'], offsets['all_tb_sigmas']))))
- 
+
     return offsets
 
 
@@ -540,15 +546,15 @@ def read_vceil_data(config, date, times):
     inner_window = config['cbh_window_in']
     outer_window = config['cbh_window_out']
 
-    if config['cbh_type'] == 1 and len(vceil_files) != 0: # ARM Vceil
+    if config['cbh_type'] == 1 and len(vceil_files) != 0:  # ARM Vceil
         vceil_cdf = Dataset(vceil_files[0])
-        cloudHeight = vceil_cdf.variables['first_cbh'][:]/1000.
+        cloudHeight = vceil_cdf.variables['first_cbh'][:] / 1000.
         no_cloud_idx = np.where(cloudHeight < 0)[0]
-    
+
         epoch_times = vceil_cdf.variables['base_time'][:] + vceil_cdf.variables['time_offset'][:]
-    elif config['cbh_type'] == 2 and len(vceil_files) != 0: # Greg's Ceilometer files
+    elif config['cbh_type'] == 2 and len(vceil_files) != 0:  # Greg's Ceilometer files
         vceil_cdf = Dataset(vceil_files[0])
-        cloudHeight = vceil_cdf.variables['cloudHeight'][:] # km AGL
+        cloudHeight = vceil_cdf.variables['cloudHeight'][:]  # km AGL
 
         epoch_times = vceil_cdf.variables['base_time'][:] + vceil_cdf.variables['time_offset'][:]
     else:
@@ -564,13 +570,15 @@ def read_vceil_data(config, date, times):
 
     for i in range(len(times)):
         epoch = times[i]
-        inner_idx = np.where((epoch_times > epoch - (inner_window * 60)) & (epoch_times < epoch + (inner_window * 60)))[0]
-        outer_idx = np.where((epoch_times > epoch - (outer_window * 60)) & (epoch_times < epoch + (outer_window * 60)))[0]
-        
+        inner_idx = np.where((epoch_times > epoch - (inner_window * 60)) & (epoch_times < epoch + (inner_window * 60)))[
+            0]
+        outer_idx = np.where((epoch_times > epoch - (outer_window * 60)) & (epoch_times < epoch + (outer_window * 60)))[
+            0]
+
         if len(np.where(cloudHeight[inner_idx] >= 0)[0]) > 0:
             # Found a cloud in the inner window
             minCBH = np.min(cloudHeight[inner_idx])
-            cbh_flag[i] = 1            
+            cbh_flag[i] = 1
         elif len(np.where(cloudHeight[outer_idx] >= 0)[0]) > 0:
             # Found a cloud in the outer window
             minCBH = np.min(cloudHeight[outer_idx])
@@ -588,6 +596,7 @@ def read_vceil_data(config, date, times):
         cbh[i] = minCBH
     print "Reading in VCEIL data...Done."
     return cbh, cbh_flag
+
 
 def read_mwr_data(config, date, btime, etime):
     """
@@ -616,7 +625,7 @@ def read_mwr_data(config, date, btime, etime):
     mwr_files = glob.glob(config['mwr_dir'] + '/*' + date + '*.cdf')
     if len(mwr_files) >= 2:
         print "Retrieval found " + str(len(mwr_files)) + " files that have " + date + \
-                " in its filename within the directory: " + config['mwr_dir']
+              " in its filename within the directory: " + config['mwr_dir']
         print "MWRoe cannot isolate one MWR data file to retrieve from.  Aborting the retrieval."
         sys.exit()
     elif len(mwr_files) == 0:
@@ -633,9 +642,188 @@ def read_mwr_data(config, date, btime, etime):
     elif config['mwr_type'] == 2:
         print "MWRoe is expecting to find a Radiometrics file..."
         oe_input = read_Radiometrics(mwr_fn, config, date, btime, etime)
+    elif config['mwr_type'] == 3:
+        print "MWRoe is expecting to find a fine in the ARM data format..."
+        oe_input = read_ARM(mwr_fn, config, date, btime, etime)
     else:
         print "No other type of microwave radiometer files are supported right now."
         sys.exit()
+
+    return oe_input
+
+
+def read_ARM(mwr_fn, config, date, btime, etime):
+    """
+            read_ARM
+
+            This function reads ARM microwave radiometer files containing
+            both zenith and off-zenith data.  It:
+                a.) Reads in the microwave radiometer data for a specific date.(if it exists)
+                b.) Stores the needed fields for retrieving the thermodynamic profile.
+                c.) Uses the VIP config dictionary to develop the Y vector.
+                d.) Saves the brightness temperature uncertainities.
+
+            Parameters
+            ----------
+            mwr_fn : the path to the HATPRO file
+            config : the config_dict returned by read VIP
+            date : the date of the retrieval time in YYYYMMDD format.
+            btime : a string of the time that indicates the beginning sample to be retrieved.
+            etime : a string of the time that indicates the end sample to be retrieved.
+
+            Returns
+            -------
+            oe_input : a dictionary containing the variables from the microwave radiometer file
+                       needed for the OE equation to work.
+        """
+    mwr_file = Dataset(mwr_fn, 'r')
+
+    # Load in the time fields
+    dts = np.array([datetime.utcfromtimestamp(d) for d in (mwr_file['base_time'][:] + mwr_file['time_offset'][:])])
+    epoch_times = date2num(dts, 'seconds since 1970-01-01 00:00:00+00:00')
+
+    # Find the bounds for the time frame we want to retrieve from.
+    start_dt = datetime.strptime(date + btime, '%Y%m%d%H%M')
+    end_dt = datetime.strptime(date + etime, '%Y%m%d%H%M')
+    start_dt = date2num(start_dt, 'seconds since 1970-01-01 00:00:00+00:00')
+    end_dt = date2num(end_dt, 'seconds since 1970-01-01 00:00:00+00:00')
+    idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
+
+    # Try to ensure that a sample gets retrieved.
+    if len(idx) == 0:
+        end_dt = start_dt + (60 * 15)
+        print "MWRoe was unable to find a spectra within the requested time frame to retrieve on."
+        print "Setting the end time to the requested start time + 15 minutes to search for a sample..."
+        idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
+        if len(idx) == 0:
+            print "Unable to find a sample to retrieve on."
+            sys.exit()
+        print str(len(idx)) + " sample found."
+
+    dts = dts[idx]
+    epoch_times = epoch_times[idx]
+
+    # Load needed variables from current HATPRO MWR file.
+    rainflags = (mwr_file.variables['rain_rate'][idx] > 0).astype(int)
+    p_sfcs = mwr_file.variables['sfc_pres'][idx]
+    elevs = mwr_file.variables['elev'][idx]
+    freqs = mwr_file.variables['freq'][:]
+    tbs = mwr_file.variables['tbsky'][idx, :]
+    print idx.shape, tbs.shape
+    # print "\n\n\nIF YOU'RE RUNNING THIS ON REAL DATA, STOP!\n\n\n"
+    # tbs[0,0,0] = tbs[0,0,0] - 1.12
+    # tbs[1,0,1] = tbs[1,0,1] - 1.06
+    # tbs[2,0,2] = tbs[2,0,2] - 0.73
+    # tbs[3,0,6] = tbs[3,0,6] - 1.12
+    # tbs[4,0,7] = tbs[4,0,7] - 0.42
+    # tbs[6,0,9] = tbs[6,0,9] - 0.25
+
+    # Apply the correction to the MWR pressure sensor.
+    p_sfcs = config['mwr_calib_pres'][1] * p_sfcs + config['mwr_calib_pres'][0]
+    # p_sfcs[5] = p_sfcs[5] + 1
+
+    # Apply any corrections to the MWR altitude, longitude, or latitude fields
+    if config['mwr_lat'] == -1:
+        lat = mwr_file.variables['latitude'][:]
+    else:
+        lat = np.asarray([config['mwr_lat']])
+
+    if config['mwr_lon'] == -1:
+        lon = mwr_file.variables['longitude'][:]
+    else:
+        lon = np.asarray([config['mwr_lon']])
+
+    if config['mwr_alt'] == -1:
+        alt = mwr_file.variables['altitude'][:]
+    else:
+        alt = np.asarray(config['mwr_alt'])
+
+    # Isolate the indices related to the zenith observations
+    zenith_idx = np.where(abs(90 - elevs) < 0.1)[0]
+    tb_zenith = tbs[zenith_idx, :].squeeze()
+
+    if len(tb_zenith.shape) == 1:
+        tb_zenith = tb_zenith[np.newaxis, :]
+
+    # Load in the zenith observations
+    z_freqs_idxs = []
+    for z_freq in config['zenith_freqs']:
+        for file_freq_idx in range(len(freqs)):
+            if abs(freqs[file_freq_idx] - z_freq) < 0.01:
+                z_freqs_idxs.append(file_freq_idx)
+
+    z_freqs = freqs[z_freqs_idxs]
+    filtered_tb_zenith = tb_zenith[:, z_freqs_idxs]
+    tb_z_uncert = config['zenith_uncert'][z_freqs_idxs]
+    elevations = 90 * np.ones(len(z_freqs))
+
+    # Load in the off-zenith observations (need to loop through the specified elevations)
+    elev_indexs = []
+    for vip_e in config['off_zenith_elevs']:
+        for file_e in range(len(elevs)):
+            if abs(vip_e - elevs[file_e]) < 0.1:
+                elev_indexs.append(file_e)
+
+    all_freqs = z_freqs
+
+    # If there are off-zenith observations, then let's add them to the Y vector.
+    if len(elev_indexs) > 0:
+
+        # Find the indices for the off-zenith frequencies
+        oz_freqs_idxs = []
+        for oz_freq in config['off_zenith_freqs']:
+            for file_freq_idx in range(len(freqs)):
+                if abs(freqs[file_freq_idx] - oz_freq) < 0.01:
+                    oz_freqs_idxs.append(file_freq_idx)
+
+        oz_freqs = freqs[oz_freqs_idxs]
+        all_freqs = np.hstack((all_freqs, np.tile(oz_freqs, len(elev_indexs)).flatten()))
+        elevations = np.hstack((elevations, np.repeat(elevs[elev_indexs], len(oz_freqs))))
+
+        tb_ozenith = tbs[:, elev_indexs, :]
+        tb_ozenith = tb_ozenith[:, :, np.asarray(oz_freqs_idxs)].squeeze()
+
+        if len(tb_ozenith.shape) == 2:
+            tb_ozenith = tb_ozenith[np.newaxis, :, :]
+
+        tb_ozenith = np.reshape(tb_ozenith, (tb_ozenith.shape[0], tb_ozenith.shape[1] * tb_ozenith.shape[2]))
+        tb_oz_uncert = config['zenith_uncert'][oz_freqs_idxs]
+
+        Y = np.hstack((filtered_tb_zenith, tb_ozenith))
+        tb_uncert = tb_z_uncert
+
+        for i in elev_indexs:
+            tb_uncert = np.hstack((tb_uncert, tb_oz_uncert))
+    else:
+        Y = filtered_tb_zenith
+        oz_freqs = []
+        tb_uncert = tb_z_uncert
+
+        # Need to make sure only the zenith times are in there
+        epoch_times = epoch_times[zenith_idx]
+        dts = dts[zenith_idx]
+        p_sfcs = p_sfcs[zenith_idx]
+
+    oe_input = {}
+    # Save the retrieval inputs to a dictionary
+    oe_input["Y"] = Y
+    oe_input["p"] = p_sfcs
+    oe_input["rainflags"] = 0
+    oe_input["epoch_times"] = epoch_times
+    oe_input["dt_times"] = dts
+    oe_input["z_freqs"] = z_freqs
+    oe_input["oz_freqs"] = oz_freqs
+    oe_input["all_elevs"] = 0
+    indexes = np.unique(elevations, return_index=True)[1]
+    oe_input["elevations_unique"] = [elevations[index] for index in sorted(indexes)]
+    oe_input["elevations"] = elevations
+    oe_input["all_freqs"] = np.concatenate((z_freqs, np.tile(oz_freqs, len(oe_input['elevations_unique']) - 1)))
+    oe_input["lat"] = lat
+    oe_input["lon"] = lon
+    oe_input["alt"] = alt
+    oe_input["tb_uncert"] = tb_uncert
+    oe_input["rainflags"] = rainflags
+
 
     return oe_input
 
@@ -667,9 +855,14 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
     mwr_file = Dataset(mwr_fn, 'r')
 
     # Load in the time fields
-    #times = mwr_file.variables['time'][:]
-    epoch_times = mwr_file.variables['time_since_19700101'][:]
-    dts = num2date(epoch_times, 'seconds since 1970-01-01 00:00:00+00:00')
+    # times = mwr_file.variables['time'][:]
+    try:
+        epoch_times = mwr_file.variables['time_since_19700101'][:]
+        dts = num2date(epoch_times, 'seconds since 1970-01-01 00:00:00+00:00')
+    except KeyError:
+        print "This looks like an ARM format file..."
+        mwr_file.close()
+        read_ARM(mwr_fn, config, date, btime, etime)
 
     # Find the bounds for the time frame we want to retrieve from.
     start_dt = datetime.strptime(date + btime, '%Y%m%d%H%M')
@@ -677,14 +870,14 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
     start_dt = date2num(start_dt, 'seconds since 1970-01-01 00:00:00+00:00')
     end_dt = date2num(end_dt, 'seconds since 1970-01-01 00:00:00+00:00')
     idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
-    times = mwr_file.variables['time'][:]
-    #idx = np.arange(0, 7, 1)
-    #print "MWRoe is edited here and is using a hard-coded time index value here of 55."
-    #idx = np.array([55])
-    
+    # times = mwr_file.variables['time'][:]
+    # idx = np.arange(0, 7, 1)
+    # print "MWRoe is edited here and is using a hard-coded time index value here of 55."
+    # idx = np.array([55])
+
     # Try to ensure that a sample gets retrieved.
     if len(idx) == 0:
-        end_dt = start_dt + (60*15)
+        end_dt = start_dt + (60 * 15)
         print "MWRoe was unable to find a spectra within the requested time frame to retrieve on."
         print "Setting the end time to the requested start time + 15 minutes to search for a sample..."
         idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
@@ -701,18 +894,18 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
     p_sfcs = mwr_file.variables['air_pressure'][idx]
     elevs = mwr_file.variables['hatpro_elevation_angle'][:]
     freqs = mwr_file.variables['frequencies'][:]
-    tbs = mwr_file.variables['brightness_temperature'][idx,:,:]
-    #print "\n\n\nIF YOU'RE RUNNING THIS ON REAL DATA, STOP!\n\n\n"
-    #tbs[0,0,0] = tbs[0,0,0] - 1.12
-    #tbs[1,0,1] = tbs[1,0,1] - 1.06
-    #tbs[2,0,2] = tbs[2,0,2] - 0.73
-    #tbs[3,0,6] = tbs[3,0,6] - 1.12
-    #tbs[4,0,7] = tbs[4,0,7] - 0.42
-    #tbs[6,0,9] = tbs[6,0,9] - 0.25
+    tbs = mwr_file.variables['brightness_temperature'][idx, :, :]
+    # print "\n\n\nIF YOU'RE RUNNING THIS ON REAL DATA, STOP!\n\n\n"
+    # tbs[0,0,0] = tbs[0,0,0] - 1.12
+    # tbs[1,0,1] = tbs[1,0,1] - 1.06
+    # tbs[2,0,2] = tbs[2,0,2] - 0.73
+    # tbs[3,0,6] = tbs[3,0,6] - 1.12
+    # tbs[4,0,7] = tbs[4,0,7] - 0.42
+    # tbs[6,0,9] = tbs[6,0,9] - 0.25
 
     # Apply the correction to the MWR pressure sensor.
     p_sfcs = config['mwr_calib_pres'][1] * p_sfcs + config['mwr_calib_pres'][0]
-    #p_sfcs[5] = p_sfcs[5] + 1
+    # p_sfcs[5] = p_sfcs[5] + 1
 
     # Apply any corrections to the MWR altitude, longitude, or latitude fields
     if config['mwr_lat'] == -1:
@@ -731,21 +924,21 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
         alt = np.asarray(config['mwr_alt'])
 
     # Isolate the indices related to the zenith observations
-    zenith_idx = np.where(abs(90-elevs)<0.1)[0]
-    tb_zenith = tbs[:,zenith_idx,:].squeeze()
-    
+    zenith_idx = np.where(abs(90 - elevs) < 0.1)[0]
+    tb_zenith = tbs[:, zenith_idx, :].squeeze()
+
     if len(tb_zenith.shape) == 1:
-        tb_zenith = tb_zenith[np.newaxis,:]
-    
+        tb_zenith = tb_zenith[np.newaxis, :]
+
     # Load in the zenith observations
     z_freqs_idxs = []
     for z_freq in config['zenith_freqs']:
         for file_freq_idx in range(len(freqs)):
-            if abs(freqs[file_freq_idx] - z_freq)<0.01:
+            if abs(freqs[file_freq_idx] - z_freq) < 0.01:
                 z_freqs_idxs.append(file_freq_idx)
 
     z_freqs = freqs[z_freqs_idxs]
-    filtered_tb_zenith = tb_zenith[:,z_freqs_idxs]
+    filtered_tb_zenith = tb_zenith[:, z_freqs_idxs]
     tb_z_uncert = config['zenith_uncert'][z_freqs_idxs]
     elevations = 90 * np.ones(len(z_freqs))
 
@@ -765,20 +958,20 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
         oz_freqs_idxs = []
         for oz_freq in config['off_zenith_freqs']:
             for file_freq_idx in range(len(freqs)):
-                if abs(freqs[file_freq_idx] - oz_freq)<0.01:
+                if abs(freqs[file_freq_idx] - oz_freq) < 0.01:
                     oz_freqs_idxs.append(file_freq_idx)
 
         oz_freqs = freqs[oz_freqs_idxs]
-        all_freqs = np.hstack((all_freqs, np.tile(oz_freqs,len(elev_indexs)).flatten()))
+        all_freqs = np.hstack((all_freqs, np.tile(oz_freqs, len(elev_indexs)).flatten()))
         elevations = np.hstack((elevations, np.repeat(elevs[elev_indexs], len(oz_freqs))))
 
-        tb_ozenith = tbs[:, elev_indexs,:]
-        tb_ozenith = tb_ozenith[:,:, np.asarray(oz_freqs_idxs)].squeeze()
+        tb_ozenith = tbs[:, elev_indexs, :]
+        tb_ozenith = tb_ozenith[:, :, np.asarray(oz_freqs_idxs)].squeeze()
 
         if len(tb_ozenith.shape) == 2:
-            tb_ozenith = tb_ozenith[np.newaxis,:,:]
+            tb_ozenith = tb_ozenith[np.newaxis, :, :]
 
-        tb_ozenith = np.reshape(tb_ozenith, (tb_ozenith.shape[0], tb_ozenith.shape[1]*tb_ozenith.shape[2]))
+        tb_ozenith = np.reshape(tb_ozenith, (tb_ozenith.shape[0], tb_ozenith.shape[1] * tb_ozenith.shape[2]))
         tb_oz_uncert = config['zenith_uncert'][oz_freqs_idxs]
 
         Y = np.hstack((filtered_tb_zenith, tb_ozenith))
@@ -786,6 +979,7 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
 
         for i in elev_indexs:
             tb_uncert = np.hstack((tb_uncert, tb_oz_uncert))
+    # Otherwise just use the zenth data in Y
     else:
         Y = filtered_tb_zenith
         oz_freqs = []
@@ -804,7 +998,7 @@ def read_HATPRO(mwr_fn, config, date, btime, etime):
     indexes = np.unique(elevations, return_index=True)[1]
     oe_input["elevations_unique"] = [elevations[index] for index in sorted(indexes)]
     oe_input["elevations"] = elevations
-    oe_input["all_freqs"] = np.concatenate((z_freqs,np.tile(oz_freqs, len(oe_input['elevations_unique'])-1)))
+    oe_input["all_freqs"] = np.concatenate((z_freqs, np.tile(oz_freqs, len(oe_input['elevations_unique']) - 1)))
     oe_input["lat"] = lat
     oe_input["lon"] = lon
     oe_input["alt"] = alt
@@ -841,25 +1035,25 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
     mwr_file = Dataset(mwr_fn, 'r')
 
     # Load in the time fields
-    #times = mwr_file.variables['time'][:]
+    # times = mwr_file.variables['time'][:]
     epoch_times = mwr_file.variables['time_since_19700101'][:]
     dts = num2date(epoch_times, 'seconds since 1970-01-01 00:00:00+00:00')
 
     # Find the bounds for the time frame we want to retrieve from.
-    print date+etime
+    print date + etime
     start_dt = datetime.strptime(date + btime, '%Y%m%d%H%M')
     end_dt = datetime.strptime(date + etime, '%Y%m%d%H%M')
     start_dt = date2num(start_dt, 'seconds since 1970-01-01 00:00:00+00:00')
     end_dt = date2num(end_dt, 'seconds since 1970-01-01 00:00:00+00:00')
     idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
     times = mwr_file.variables['time'][:]
-    #idx = np.arange(0, 7, 1)
-    #print "MWRoe is edited here and is using a hard-coded time index value here of 55."
-    #idx = np.array([55])
-    
+    # idx = np.arange(0, 7, 1)
+    # print "MWRoe is edited here and is using a hard-coded time index value here of 55."
+    # idx = np.array([55])
+
     # Try to ensure that a sample gets retrieved.
     if len(idx) == 0:
-        end_dt = start_dt + (60*15)
+        end_dt = start_dt + (60 * 15)
         print "MWRoe was unable to find a spectra within the requested time frame to retrieve on."
         print "Setting the end time to the requested start time + 15 minutes to search for a sample..."
         idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
@@ -876,11 +1070,11 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
     p_sfcs = mwr_file.variables['air_pressure'][idx]
     elevs = mwr_file.variables['elevation_angle'][:]
     freqs = mwr_file.variables['frequencies'][:]
-    tbs = mwr_file.variables['brightness_temperature'][idx,:,:]
+    tbs = mwr_file.variables['brightness_temperature'][idx, :, :]
 
     # Apply the correction to the MWR pressure sensor.
     p_sfcs = config['mwr_calib_pres'][1] * p_sfcs + config['mwr_calib_pres'][0]
-    #p_sfcs[5] = p_sfcs[5] + 1
+    # p_sfcs[5] = p_sfcs[5] + 1
 
     # Apply any corrections to the MWR altitude, longitude, or latitude fields
     if config['mwr_lat'] == -1:
@@ -899,25 +1093,25 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
         alt = np.asarray(config['mwr_alt'])
 
     # Isolate the indices related to the zenith observations
-    zenith_idx = np.where(abs(90-elevs)<0.1)[0]
-    tb_zenith = tbs[:,zenith_idx,:].squeeze()
-    
+    zenith_idx = np.where(abs(90 - elevs) < 0.1)[0]
+    tb_zenith = tbs[:, zenith_idx, :].squeeze()
+
     if len(tb_zenith.shape) == 1:
-        tb_zenith = tb_zenith[np.newaxis,:]
-    
+        tb_zenith = tb_zenith[np.newaxis, :]
+
     # Load in the zenith observations
     z_freqs_idxs = []
     tb_z_uncert = []
     print freqs
     for z_freq in config['zenith_freqs']:
         for file_freq_idx in range(len(freqs)):
-            if abs(freqs[file_freq_idx] - z_freq)<0.01:
+            if abs(freqs[file_freq_idx] - z_freq) < 0.01:
                 z_freqs_idxs.append(file_freq_idx)
                 idx = np.where(z_freq == config['zenith_freqs'])[0]
                 tb_z_uncert.append(config['zenith_uncert'][idx][0])
     tb_z_uncert = np.asarray(tb_z_uncert, dtype=float)
     z_freqs = freqs[z_freqs_idxs]
-    filtered_tb_zenith = tb_zenith[:,z_freqs_idxs]
+    filtered_tb_zenith = tb_zenith[:, z_freqs_idxs]
     elevations = 90 * np.ones(len(z_freqs))
 
     # Load in the off-zenith observations (need to loop through the specified elevations)
@@ -936,20 +1130,20 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
         oz_freqs_idxs = []
         for oz_freq in config['off_zenith_freqs']:
             for file_freq_idx in range(len(freqs)):
-                if abs(freqs[file_freq_idx] - oz_freq)<0.01:
+                if abs(freqs[file_freq_idx] - oz_freq) < 0.01:
                     oz_freqs_idxs.append(file_freq_idx)
 
         oz_freqs = freqs[oz_freqs_idxs]
-        all_freqs = np.hstack((all_freqs, np.tile(oz_freqs,len(elev_indexs)).flatten()))
+        all_freqs = np.hstack((all_freqs, np.tile(oz_freqs, len(elev_indexs)).flatten()))
         elevations = np.hstack((elevations, np.repeat(elevs[elev_indexs], len(oz_freqs))))
 
-        tb_ozenith = tbs[:, elev_indexs,:]
-        tb_ozenith = tb_ozenith[:,:, np.asarray(oz_freqs_idxs)].squeeze()
+        tb_ozenith = tbs[:, elev_indexs, :]
+        tb_ozenith = tb_ozenith[:, :, np.asarray(oz_freqs_idxs)].squeeze()
 
         if len(tb_ozenith.shape) == 2:
-            tb_ozenith = tb_ozenith[np.newaxis,:,:]
+            tb_ozenith = tb_ozenith[np.newaxis, :, :]
 
-        tb_ozenith = np.reshape(tb_ozenith, (tb_ozenith.shape[0], tb_ozenith.shape[1]*tb_ozenith.shape[2]))
+        tb_ozenith = np.reshape(tb_ozenith, (tb_ozenith.shape[0], tb_ozenith.shape[1] * tb_ozenith.shape[2]))
         tb_oz_uncert = config['zenith_uncert'][oz_freqs_idxs]
 
         Y = np.hstack((filtered_tb_zenith, tb_ozenith))
@@ -961,7 +1155,7 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
         Y = filtered_tb_zenith
         oz_freqs = []
         tb_uncert = tb_z_uncert
-    
+
     oe_input = {}
     # Save the retrieval inputs to a dictionary
     oe_input["Y"] = Y
@@ -975,7 +1169,7 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
     indexes = np.unique(elevations, return_index=True)[1]
     oe_input["elevations_unique"] = [elevations[index] for index in sorted(indexes)]
     oe_input["elevations"] = elevations
-    oe_input["all_freqs"] = np.concatenate((z_freqs,np.tile(oz_freqs, len(oe_input['elevations_unique'])-1)))
+    oe_input["all_freqs"] = np.concatenate((z_freqs, np.tile(oz_freqs, len(oe_input['elevations_unique']) - 1)))
     oe_input["lat"] = lat
     oe_input["lon"] = lon
     oe_input["alt"] = alt
@@ -983,6 +1177,3 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
     oe_input["rainflags"] = rainflags
 
     return oe_input
-
-
-

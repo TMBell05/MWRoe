@@ -30,6 +30,8 @@ def constructOutputFN(dts, config_dict):
     dt = dts[0].replace(tzinfo=utc)
     dt_string = datetime.strftime(dt, '.%Y%m%d.%H%M%S.cdf')
 
+    if not os.path.isdir(config_dict['output_path']): os.makedirs(config_dict['output_path'])
+
     return config_dict['output_path'] + "/" + config_dict['output_rootname'] + dt_string
 
 
@@ -460,7 +462,7 @@ def writeMonoRTMFreqs(oe_input, config, offsets):
     monoRTM_freq_files = [freq_zenith_file]
 
     # Write the OFF-ZENITH frequencies we want to a separate frequency file.
-    num_off_zenith_freqs = str(len(oe_input['oz_freqs']))
+    num_off_zenith_freqs = len(oe_input['oz_freqs'])
     if int(num_off_zenith_freqs) != 0:
         freq_oz_file = config['working_dir'] + "/" + config['monortm_freqs_fname_base'] + '.ozen'
         oz_freqs = oe_input['oz_freqs']
@@ -469,6 +471,7 @@ def writeMonoRTMFreqs(oe_input, config, offsets):
         freq_file.write('\n')
         freq_file.write('%s\n' % num_off_zenith_freqs) # Write the number of frequencies for the monoRTM to the freq file
 
+        print off_zenith_freqs
         # Write the off-zenith frequencies to the monortm_freqs file
         for i in range(int(num_off_zenith_freqs)):
             freq_file.write('%s\n' % off_zenith_freqs[i])
@@ -514,14 +517,14 @@ def writeMonoRTMConfig(alt, config_dict):
     mcf_file.write(config_dict['monortm_spectral_dat'] + '\n')
     mcf_file.write('0       Verbose level (0 is quiet, 1 is DEBUG)\n')
     mcf_file.write('6       Default atmos (1->trop, 2->MLS, 3->MLW, 4->SAS, 5->SAW, 6->USStd)\n')
-    mcf_file.write('1       Ispd (0->use all lines and go slow, 1->use subset and go faster)\n')
+    mcf_file.write('0       Ispd (0->use all lines and go slow, 1->use subset and go faster)\n')
     mcf_file.write('1.000       Self-broadened WV continuum multiplier\n')
     mcf_file.write('1.000       Foreign-broadened WV continuum multiplier\n')
     mcf_file.write('1.000       CO2 continuum multiplier\n')
     mcf_file.write('1.000       O3 continuum multiplier\n')
     mcf_file.write('1.000       O2 continuum multiplier\n')
     mcf_file.write('1.000       N2 continuum multiplier\n')
-    mcf_file.write('15.0        Minimum altitude [km MSL] that sonde must achieve to be used, Number of model levels (next line), Heights in km above minimum input sonde level (all lines following), and a blank line at the end\n')
+    mcf_file.write('8.5         Minimum altitude [km MSL] that sonde must achieve to be used, Number of model levels (next line), Heights in km above minimum input sonde level (all lines following), and a blank line at the end\n')
 
     mcf_file.write('%s\n'%n_s) # Write the number of levels for the height grid
     for i in range(num_alts):

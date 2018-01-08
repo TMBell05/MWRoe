@@ -131,9 +131,10 @@ for samp_idx in range(len(oe_inputs['p'])):
     begin_dt = datetime.today()
     converged_flag = 0
 
-    # Make the Xa (since i == 0) netCDF file for the forward model calculation    
-    T_z = np.squeeze(x_c[:55])
-    Q_z = np.squeeze(x_c[55:55+55])
+    # Make the Xa (since i == 0) netCDF file for the forward model calculation
+    nalt = len(alt)
+    T_z = np.squeeze(x_c[:nalt])
+    Q_z = np.squeeze(x_c[nalt:2*nalt])
     LWP_n = x_c[-1]
     p, RH = helper.getProfilePresRH(alt, T_z, Q_z, sfc_pres)
 
@@ -148,8 +149,8 @@ for samp_idx in range(len(oe_inputs['p'])):
 #    print "The freq offsets:",offsets['z_freq_offsets']
 #    print "All the elevations:",oe_inputs['elevations_unique']
 #    print LWP_n
-    F_x = forwardmodel.gen_Fx(sonde_file, monortm_freqs_files, LWP_n, oe_inputs['elevations_unique'],\
-                               cloud_base, cloud_top, delta_tb = offsets['all_tb_offsets'])
+    F_x = forwardmodel.gen_Fx(sonde_file, monortm_freqs_files, LWP_n, oe_inputs['elevations_unique'],
+                               cloud_base, cloud_top, delta_tb=offsets['all_tb_offsets'])
 #    print "F_x:",np.asarray(F_x)
 #    print "Y:",np.asarray(Y).squeeze()
 #    print "Y-F_x:",np.asarray(Y).squeeze() - np.asarray(F_x)
@@ -196,8 +197,9 @@ for samp_idx in range(len(oe_inputs['p'])):
         x_cs[i] = np.asarray(x_c).squeeze()
 
         # Make the X_{i+1} (since i != 0) netCDF file for the forward model calculation    
-        T_z = np.squeeze(x_cs[i][:55])
-        Q_z = np.squeeze(x_cs[i][55:55+55])
+        nalt = len(alt)
+        T_z = np.squeeze(x_cs[i][:nalt])
+        Q_z = np.squeeze(x_cs[i][nalt:2 * nalt])
         LWP_n = x_cs[i][-1]
         p, RH = helper.getProfilePresRH(alt, T_z, Q_z, sfc_pres)
 
@@ -299,6 +301,7 @@ for samp_idx in range(len(oe_inputs['p'])):
     output['cbh_flag'] = cloud_flag[samp_idx]
     output['sample_index'] = samp_idx
 
+    print out_filename
     # NEED TO FIX THIS PART
     writer.save_retrieval(out_filename, output, config, prior_info, oe_inputs)
 

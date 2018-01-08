@@ -186,7 +186,7 @@ def gen_Fx(sonde_file, freq_filenames, LWP_n, elevations, cbh, cth, delta_tb=0, 
                 continue
 
             # Build the string to be used to run MonoRTM on the command line 
-            monoStr = ['monortm_v4', sonde_file, pwv_sf, LWP, cbh, cth, str(90 - elev)]
+            monoStr = ['monortm_v5', sonde_file, pwv_sf, LWP, cbh, cth, str(90 - elev)]
 
             # Run the string and get the output
             output = subprocess.Popen(monoStr, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
