@@ -199,6 +199,7 @@ def gen_Fx(sonde_file, freq_filenames, LWP_n, elevations, cbh, cth, delta_tb=0, 
             except:
                 # Means the MonoRTM didn't run properly
                 print "ERROR with MonoRTM", output
+                return None
                 sys.exit()
 
             # The MonoRTM ran successfully, parse out the brightness temperatures

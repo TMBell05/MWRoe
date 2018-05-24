@@ -151,6 +151,7 @@ for samp_idx in range(len(oe_inputs['p'])):
 #    print LWP_n
     F_x = forwardmodel.gen_Fx(sonde_file, monortm_freqs_files, LWP_n, oe_inputs['elevations_unique'],
                                cloud_base, cloud_top, delta_tb=offsets['all_tb_offsets'])
+    if F_x is None: continue
 #    print "F_x:",np.asarray(F_x)
 #    print "Y:",np.asarray(Y).squeeze()
 #    print "Y-F_x:",np.asarray(Y).squeeze() - np.asarray(F_x)
@@ -208,6 +209,7 @@ for samp_idx in range(len(oe_inputs['p'])):
         writer.makeMonoRTMCDF(sonde_file, alt, T_z, p, RH)
         os.environ['monortm_config'] = monortm_config_file
         F_x = forwardmodel.gen_Fx(sonde_file, monortm_freqs_files, LWP_n, oe_inputs['elevations_unique'], cloud_base, cloud_top, delta_tb=offsets['all_tb_offsets'])
+        if F_x is None: continue
 
         # Store the RMS(F(i+1),Y), D(i+1), F(i+1) for the next OE calculation 
         RMSs[i+1] = helper.rms(np.asarray(Y).squeeze(), F_x)
