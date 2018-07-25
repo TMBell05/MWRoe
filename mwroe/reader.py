@@ -657,28 +657,28 @@ def read_mwr_data(config, date, btime, etime):
 
 def read_DLR(mwr_fn, config, date, btime, etime):
     """
-                read_ARM
+    read_ARM
 
-                This function reads a DLR microwave radiometer files containing
-                both zenith and off-zenith data.  It:
-                    a.) Reads in the microwave radiometer data for a specific date.(if it exists)
-                    b.) Stores the needed fields for retrieving the thermodynamic profile.
-                    c.) Uses the VIP config dictionary to develop the Y vector.
-                    d.) Saves the brightness temperature uncertainities.
+    This function reads a DLR microwave radiometer files containing
+    both zenith and off-zenith data.  It:
+        a.) Reads in the microwave radiometer data for a specific date.(if it exists)
+        b.) Stores the needed fields for retrieving the thermodynamic profile.
+        c.) Uses the VIP config dictionary to develop the Y vector.
+        d.) Saves the brightness temperature uncertainities.
 
-                Parameters
-                ----------
-                mwr_fn : the path to the HATPRO file
-                config : the config_dict returned by read VIP
-                date : the date of the retrieval time in YYYYMMDD format.
-                btime : a string of the time that indicates the beginning sample to be retrieved.
-                etime : a string of the time that indicates the end sample to be retrieved.
+    Parameters
+    ----------
+    mwr_fn : the path to the HATPRO file
+    config : the config_dict returned by read VIP
+    date : the date of the retrieval time in YYYYMMDD format.
+    btime : a string of the time that indicates the beginning sample to be retrieved.
+    etime : a string of the time that indicates the end sample to be retrieved.
 
-                Returns
-                -------
-                oe_input : a dictionary containing the variables from the microwave radiometer file
-                           needed for the OE equation to work.
-            """
+    Returns
+    -------
+    oe_input : a dictionary containing the variables from the microwave radiometer file
+               needed for the OE equation to work.
+    """
     mwr_file = Dataset(mwr_fn, 'r')
 
     # Load in the time fields

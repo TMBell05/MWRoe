@@ -18,6 +18,8 @@ import helper
 #
 #       Copyrighted 2014
 #
+#
+#       Summer 2018 - Improvements made by Tyler Bell (OU/CIMMS)
 ###################################################################
 
 try:
@@ -26,10 +28,13 @@ try:
     prior = sys.argv[3]
     btime = sys.argv[4]
     etime = sys.argv[5]
+    print sys.argv
 except:
     print "Incorrect command line arguments!  Need the following:\n" + \
           "python run_MWRoe.py YYYYMMDD <path to VIP> <path to prior> HHMM HHMM"
     sys.exit()
+
+print date
 
 os.system('rm -R run_mon*')
 # TODO:
@@ -115,7 +120,8 @@ for samp_idx in range(len(oe_inputs['p'])):
     
     monortm_freqs_files = writer.writeMonoRTMFreqs(oe_inputs, config, offsets)
  
-    # Make the S_ob matrix that describes the MWR random error (forward model error to be added later)d
+    # Make the S_ob matrix that describes the MWR random error (forward model error to be added later)
+    # For tow use the tb_uncert specified in the VIP file
     S_y = np.matrix(np.diag(np.power(oe_inputs['tb_uncert'],2)))
     
     # Build arrays used to save the results from each iteration.
@@ -139,6 +145,7 @@ for samp_idx in range(len(oe_inputs['p'])):
     p, RH = helper.getProfilePresRH(alt, T_z, Q_z, sfc_pres)
 
     # Make the F(Xa) calculation (the first forward model calculation)
+    # This is the first guess
     sonde_file = config['working_dir'] + '/prior_comp.cdf'
     writer.makeMonoRTMCDF(sonde_file, alt, T_z, p, RH)
     os.environ['monortm_config'] = monortm_config_file
