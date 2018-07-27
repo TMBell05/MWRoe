@@ -37,6 +37,41 @@ def average_spectra(config, oe_inputs):
     return oe_inputs
 
 
+def average_timeseries(config, sfc_tseries):
+    tres =config['tres']
+    td = tres*30
+    epoch_times = sfc_tseries['epoch_times']
+    center = epoch_times[0] + td
+
+    q_tmp = []
+    T_tmp = []
+    epoch_tmp = []
+    dt_tmp = []
+    while center <= epoch_times[-1]:
+        idx = np.where((epoch_times >= center - td) & (epoch_times <= center + td))[0]
+
+        # Perfom averaging
+        new_q = np.mean(sfc_tseries['Q'][idx])
+        new_T = np.mean(sfc_tseries['T'][idx])
+
+        # Append to new arrays
+        q_tmp.append(new_q)
+        T_tmp.append(new_T)
+        epoch_tmp.append(center)
+        dt_tmp.append(datetime.utcfromtimestamp(center))
+
+        center = center + 2*td
+
+    print "Averaging reduced the number of surface obs from {} to {}".format(len(epoch_times), len(epoch_tmp))
+
+    sfc_tseries['dt_times'] = np.asarray(dt_tmp)
+    sfc_tseries['epoch_times'] = np.asarray(epoch_tmp)
+    sfc_tseries['T'] = np.asarray(T_tmp)
+    sfc_tseries['Q'] = np.asarray(q_tmp)
+
+    return sfc_tseries
+
+
 def getProfilePresRH(alt, T_z, Q_z, sfc_pres):
     '''
         getProfilePresRH
@@ -118,6 +153,47 @@ def q2rh(Q_z, P_z, T_z):
     RH_z = (e_z / es_z) * 100.0  # %
 
     return RH_z
+
+
+def rh2q(RH_z, P_z, T_z):
+    '''
+        q2rh
+
+        This helper function converts a profile of water vapor mixing ratio
+        into a profile of relative humidity.
+
+        Parameters
+        ----------
+        RH_z : an array of relative humidity [unitless]
+        P_z : an array of the pressure profile [mb]
+        T_z : an array of the temperature profile [C]
+
+        Returns
+        -------
+        Q_z : an array of the mixing ratio profile [g/kg]
+    '''
+
+    K_C = 273.15
+
+    # Set constant parameters.
+    epsilon = 622.0  # empirical coeff. to obtain Q(z), dimmensionless
+    T0 = 273.15  # base temperature in K
+    Rv = 461.5  # specific water vapor gas constant in J/(kg*K)
+    L = 2.5 * (10 ** 6)  # latent heat of vaporization in J/kg
+    es0 = 611  # measured saturation vapor pressure at temp. T0 in Pa
+
+    # Make needed unit conversions.
+    T_z_K = T_z + K_C  # K
+
+    # Compute saturation vapor pressure using the Clausius-Clapeyron equation.
+    es_z = es0 * np.exp((L / Rv) * ((1 / T0) - (1 / T_z_K)))
+
+    # Compute the vapor pressure profile
+    e_z = RH_z * es_z
+    e_z /= 100
+    Q_z = .622 * e_z / (P_z - e_z)
+
+    return RH_z * Q_z
 
 
 def rms(Y, Fx):

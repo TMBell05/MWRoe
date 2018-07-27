@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import random
 
+from helper import rh2q
 
 def constructPrior(prior_filename, config_dict):
     """
@@ -409,6 +410,18 @@ def readVIP(vip_fn):
     ############################################################################ 
 
     config_dict['max_iterations'] = int(findVIPVariable('max_iterations', vip_string))
+
+    ############################################################################
+    #
+    #   VIP information on the met surface observations
+    #
+    ############################################################################
+
+    config_dict['sfc_ob_type'] = int(findVIPVariable('sfc_ob_type', vip_string))
+    config_dict['sfc_ob_path'] = findVIPVariable('sfc_ob_path', vip_string).strip()
+    config_dict['sfc_rh_bias'] = float(findVIPVariable('sfc_rh_bias', vip_string))
+    config_dict['sfc_t_bias'] = float(findVIPVariable('sfc_t_bias', vip_string))
+    config_dict['sfc_ob_hgt'] = float(findVIPVariable('sfc_ob_hgt', vip_string))
 
     # Return the dictionary (or structure) containing all of the configuration information needed to run the retrieval.
     return config_dict
@@ -1355,3 +1368,92 @@ def read_Radiometrics(mwr_fn, config, date, btime, etime):
     oe_input["rainflags"] = rainflags
 
     return oe_input
+
+
+def read_sfc_ob(config, date, btime, etime, secs):
+    """
+    Function to read in surface observation data. Currently only supports sfc ob data from the ARM format MWR files
+    :param config: Config Dictionary
+    :param date: Date
+    :param btime: Start time
+    :param etime: End time
+    :param secs: Observation times of the MWR data (epoch time)
+    :return: Dictionary of timeseries data of temperature and mixing ratio
+    """
+
+    sfc_tseries = {}  # Dict to store timeseries information
+
+    print "Reading in surface observation data..."
+
+    if config['sfc_ob_type'] == 0:  # Do absolutely nothing
+        sfc_tseries['nT'] = 0
+        sfc_tseries['nq'] = 0
+
+    elif config['sfc_ob_type'] == 1:  # Read in CLAMPS sfc met data
+        print "Reading in CLAMPS MWR sfc met data..."
+
+        # Get the file
+        try:
+            sfc_ob_fn = glob.glob(os.path.join(config['sfc_ob_path'], "*{date}*.cdf".format(date=date)))[0]
+        except IndexError:
+            print "No surface ob file found... Exiting"
+            sys.exit()
+
+        sfc_file = Dataset(sfc_ob_fn, 'r')
+
+        # Load in the time fields
+        dts = np.array([datetime.utcfromtimestamp(d) for d in (sfc_file['base_time'][:] + sfc_file['time_offset'][:])])
+        epoch_times = date2num(dts, 'seconds since 1970-01-01 00:00:00+00:00')
+
+        # Find the bounds for the time frame we want to retrieve from.
+        start_dt = datetime.strptime(date + btime, '%Y%m%d%H%M')
+        end_dt = datetime.strptime(date + etime, '%Y%m%d%H%M')
+        start_dt = date2num(start_dt, 'seconds since 1970-01-01 00:00:00+00:00')
+        end_dt = date2num(end_dt, 'seconds since 1970-01-01 00:00:00+00:00')
+        idx = np.where((start_dt < epoch_times) & (end_dt > epoch_times))[0]
+
+        # Retrieve the temperature and moisture data from the netCDF
+        tsfc = sfc_file['sfc_temp'][idx]
+        rhsfc = sfc_file['sfc_rh'][idx]
+        psfc = sfc_file['sfc_pres'][idx]
+        epoch_times = epoch_times[idx]
+
+        # Set sigma for RH and T
+        sigma_rh = 3.  # %
+        sigma_t = .5  # C
+
+        # Convert to mixing ratio
+        q0 = rh2q(rhsfc / 100., psfc, tsfc)
+        q1 = rh2q((rhsfc + sigma_rh)/ 100., psfc, tsfc)
+        q2 = rh2q((rhsfc - sigma_rh)/ 100., psfc, tsfc)
+        q3 = rh2q(rhsfc / 100., psfc, tsfc + sigma_t)
+        q4 = rh2q(rhsfc / 100., psfc, tsfc - sigma_t)
+
+        sigma_q = np.sqrt( ((q1-q0)**2. + (q2-q0)**2.)/2. + ((q3-q0)**2 + (q4-q0)**2)/2.)
+
+        sfc_file.close()
+
+        sfc_tseries['nT'] = len(secs)
+        sfc_tseries['nq'] = len(secs)
+        sfc_tseries['sigma_T'] = sigma_t
+        sfc_tseries['sigma_q'] = sigma_q
+
+    else:
+        print "SURFACE OB TYPE NOT RECOGNIZED. EXITING..."
+        sys.exit()
+
+    # Now perform interpolation of the data to the timesteps from the MWR observations
+    # TODO - Implement binning like in aerioe in case sfc obs dt << mwr dt
+
+    # Interpolate temperature
+    if sfc_tseries['nT'] != 0:
+        sfc_tseries['T'] = np.interp(secs, epoch_times, tsfc)
+
+    # Interpolate mixing ratio
+    if sfc_tseries['nq'] != 0:
+        sfc_tseries['Q'] = np.interp(secs, epoch_times, q0)
+
+    # Add in the observation times
+    sfc_tseries['epoch_times'] = epoch_times
+
+    return sfc_tseries

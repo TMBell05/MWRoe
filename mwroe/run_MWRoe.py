@@ -61,10 +61,15 @@ os.system('rm ' + config['working_dir'] + '/*')
 oe_inputs = reader.read_mwr_data(config, date, btime, etime)
 cbh, cloud_flag = reader.read_vceil_data(config, date, oe_inputs['epoch_times'])
 Xa, Sa, alt, prior_info = reader.constructPrior(prior_filename, config)
+sfc_tseries = reader.read_sfc_ob(config, date, btime, etime, oe_inputs['epoch_times'])
 
 # Perform spectral averaging if it is required.
 if config['tres'] != 0:
     oe_inputs = helper.average_spectra(config, oe_inputs)
+
+# Perform time series averaging if it is required
+if config['tres'] != 0 and sfc_tseries['nT'] != 0:
+    sfc_tseries = helper.average_timeseries(config, sfc_tseries)
 
 # Write the MonoRTM Config and Freqs files
 monortm_config_file = writer.writeMonoRTMConfig(alt/1000., config)
@@ -96,6 +101,7 @@ for samp_idx in range(len(oe_inputs['p'])):
     print "Beginning retrieval for sample: " + str(samp_idx + 1) + ' out of ' + str(len(oe_inputs['Y'])) + \
           ", observation timestamp: " + datetime.strftime(oe_inputs['dt_times'][samp_idx], '%Y-%m-%d %H:%M:%S UTC') + \
           " [CBH = " + str(np.round(cbh[samp_idx],2)) + " km]"
+
     # Extract the spectra, surface pressure, and cloud base height to be used in for the following retrieval
     Y = np.matrix(oe_inputs['Y'][samp_idx]).T
     sfc_pres = oe_inputs['p'][samp_idx]
